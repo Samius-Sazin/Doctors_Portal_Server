@@ -10,6 +10,10 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.json());
 
+//parse files
+const fileParser = require('express-fileupload');
+app.use(fileParser());
+
 //Service account setup/ JWT setup
 const admin = require("firebase-admin");
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -48,6 +52,7 @@ async function run() {
         const database = client.db("doctors_portal");
         const usersCollection = database.collection("users");
         const appointmentsCollection = database.collection("appointments");
+        const doctorsCollection = database.collection("doctors");
 
         //save appointments to DB from client site
         app.post('/appointments', async (req, res) => {
@@ -135,6 +140,37 @@ async function run() {
             const cursor = appointmentsCollection.find(query);
             const appointments = await cursor.toArray();
             res.send(appointments);
+        })
+
+        //send files (information of doctor)
+        app.post('/doctors', async (req, res) => {
+            //access body from file
+            const name = req.body.name;
+            const email = req.body.email;
+            const phone = req.body.phone;
+            //access image from file 
+            const image = req.files.image;
+            const imageData = image.data;
+            const encodedImage = imageData.toString('base64');
+            const imageBuffer = Buffer(encodedImage, 'base64');
+            //make an object of informations snd send to DB
+            const doctorInfo = {
+                name: name,
+                email: email,
+                phone: phone,
+                image: imageBuffer
+            }
+            //send to DB
+            const result = await doctorsCollection.insertOne(doctorInfo);
+            //send the response
+            res.send(result);
+        })
+
+        //get doctors info from DB
+        app.get('/doctors', async (req, res) => {
+            const cursore = doctorsCollection.find({});
+            const doctors = await cursore.toArray();
+            res.send(doctors);
         })
     }
     finally {
