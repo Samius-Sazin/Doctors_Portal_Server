@@ -17,6 +17,7 @@
     "express": "^4.19.2",
     "express-fileupload": "^1.5.1",
     "firebase-admin": "^12.2.0",
-    "mongodb": "^6.8.0"
+    "mongodb": "^6.8.0",
+    "stripe": "^16.2.0"
   }
 }

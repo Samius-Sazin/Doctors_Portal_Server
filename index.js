@@ -14,6 +14,9 @@ app.use(express.json());
 const fileParser = require('express-fileupload');
 app.use(fileParser());
 
+
+
+
 //Service account setup/ JWT setup
 const admin = require("firebase-admin");
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -38,6 +41,9 @@ const varifyToken = async (req, res, next) => {
 
     next();
 }
+
+//Stripe set up
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 //mongoDB part
 const { MongoClient, ObjectId } = require('mongodb');
@@ -171,6 +177,50 @@ async function run() {
             const cursore = doctorsCollection.find({});
             const doctors = await cursore.toArray();
             res.send(doctors);
+        })
+
+        //get appointment seraching by id
+        app.get('/appointments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await appointmentsCollection.findOne(query);
+            res.send(result);
+        })
+
+        //Update payment Status seraching by id
+        app.put('/appointments/:id', async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: false };
+
+            const updatePaymentInfo = {
+                $set: {
+                    payment: payment
+                }
+            };
+            const result = await appointmentsCollection.updateOne(filter, updatePaymentInfo, options);
+            res.send(result);
+        })
+
+        //APi for stripe
+        app.post('/create-payment-intent', async (req, res) => {
+            const paymentInfo = req.body;
+            const amount = paymentInfo.cost * 100;
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
         })
     }
     finally {
